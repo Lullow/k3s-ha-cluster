@@ -1,0 +1,82 @@
+# The chatbot from homework 7, pulled from GHCR. The image is the contract between
+# the two repositories: this file only points at it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot
+  labels:
+    app: chatbot
+spec:
+  # The server is stateless (the browser sends the whole conversation), so two pods
+  # on two workers can share the traffic. The page shows which pod answered.
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chatbot
+  template:
+    metadata:
+      labels:
+        app: chatbot
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: chatbot
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: chatbot
+          image: ghcr.io/lullow/docker-chatbot:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            # host.k3d.internal is the Docker host as seen from inside the cluster.
+            # Ollama listens there on 11434 with an OpenAI-compatible API.
+            - name: LLM_BASE_URL
+              value: http://host.k3d.internal:11434/v1
+            - name: LLM_MODEL
+              value: llama3.2:3b
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot
+spec:
+  selector:
+    app: chatbot
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chatbot
+spec:
+  ingressClassName: traefik
+  rules:
+    # Browsers resolve *.localhost to 127.0.0.1, so no hosts-file entry is needed.
+    - host: chat.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: chatbot
+                port:
+                  number: 8000

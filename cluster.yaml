@@ -1,0 +1,39 @@
+# k3d configuration for the homework 8 cluster.
+#
+# Three control-plane nodes (k3d calls them "servers") and three workers ("agents"),
+# each one a Docker container running k3s on the local Docker daemon.
+# Reference: https://k3d.io/stable/usage/configfile/
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: hw8
+
+# Three servers give the embedded etcd a quorum, so the control plane survives one failure.
+servers: 3
+agents: 3
+
+# Pinned so that the cluster is reproducible. Same minor as the kubectl client.
+image: rancher/k3s:v1.36.5-k3s1
+
+kubeAPI:
+  hostIP: "127.0.0.1"
+  # Docker Desktop's own Kubernetes already listens on 6443.
+  hostPort: "6550"
+
+ports:
+  # localhost:8080 -> k3d load balancer -> port 80 on the nodes -> Traefik -> Service -> Pod
+  - port: 127.0.0.1:8080:80
+    nodeFilters:
+      - loadbalancer
+
+options:
+  k3s:
+    extraArgs:
+      # Keep the control plane free of workloads, so that no node has two roles.
+      # k3s does not taint its servers by default.
+      - arg: --node-taint=node-role.kubernetes.io/control-plane:NoSchedule
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
