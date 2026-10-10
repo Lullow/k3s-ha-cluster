@@ -143,16 +143,25 @@ Removes the six nodes, the load balancer and the tools container, and the `k3d-h
 
 ## Screenshots
 
-<!-- TODO: add the files to screenshots/ and replace this list with images and captions.
-     Suggested names:
-     01-up-sh.png              ./up.sh running, with the final node and pod tables
-     02-nodes.png              kubectl get nodes: 3 control-plane,etcd + 3 workers
-     03-pods.png               kubectl get pods -o wide: every pod on an agent
-     04-hello.png              http://localhost:8080 in the browser
-     05-chatbot.png            http://chat.localhost:8080 with a question and an answer
-     06-hook-blocks-delete.png the homework 6 hook stopping the agent from deleting the cluster
-     07-down-sh.png            ./down.sh, no k3d- containers left
--->
+**1. `./up.sh`.** The end of the run. The cluster is created, both apps are deployed, and the script prints the nodes, the taints and the pods. From no cluster to a working one in about two minutes.
+
+![The end of ./up.sh with the node, taint and pod tables](screenshots/01-up-sh.png)
+
+**2. Nodes.** Three `control-plane,etcd` nodes and three workers, all Ready on the same k3s version. Only the servers carry the `node-role.kubernetes.io/control-plane` taint.
+
+![kubectl get nodes and the taints column](screenshots/02-nodes.png)
+
+**3. Pods.** Every hello and chatbot pod runs on an agent. The topology spread constraint puts the three hello pods on three different workers.
+
+![kubectl get pods -o wide, every pod on an agent](screenshots/03-pods.png)
+
+**4. Hello world in the browser.** `http://localhost:8080` answered by `hello-989787ddc-pm8cs`, the pod on agent-1. The request took the path described in [How it works](#how-it-works): Windows, Docker Desktop, the k3d load balancer, Traefik, the Service and finally the pod.
+
+![The hello page on localhost:8080 showing the pod name](screenshots/04-hello.png)
+
+**5. The chatbot in the browser.** `http://chat.localhost:8080` served by `chatbot-56568b99f6-h667k` on agent-0, with an answer from `llama3.2:3b` running in Ollama on the host, reached through `host.k3d.internal`.
+
+![The chatbot page on chat.localhost:8080 with a question and an answer](screenshots/05-chatbot.png)
 
 ## Limitations
 
