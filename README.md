@@ -51,8 +51,8 @@ host.k3d.internal:11434                 Ollama on the host, OpenAI-compatible AP
 
 | File | Purpose |
 |---|---|
-| `cluster.yaml` | k3d config: 3 servers, 3 agents, pinned k3s image, the taint on the servers, ports 8080 and 6550 |
-| `up.sh` | Installs k3d if missing, creates or starts the cluster, waits for the nodes and Traefik, applies `k8s/`, prints the result. Safe to re-run |
+| `cluster.yaml` | k3d config: 3 servers, 3 agents, pinned k3s image, the taint on the servers, ports 8080 and 6550, a fixed subnet so that the servers keep their IPs across restarts |
+| `up.sh` | Installs k3d if missing, creates the cluster, or restarts it in the right order if it exists but does not answer, waits for the nodes and Traefik, applies `k8s/`, prints the result. Safe to re-run |
 | `down.sh` | Deletes the cluster and its containers, switches kubectl back to the Docker Desktop context if there is one |
 | `k8s/hello.yaml` | `nginxdemos/hello:0.4`, three pods spread over the workers, a Service and the default Ingress |
 | `k8s/chatbot.yaml` | The homework 7 image, two pods, a Service and an Ingress for `chat.localhost` |
@@ -71,7 +71,7 @@ host.k3d.internal:11434                 Ollama on the host, OpenAI-compatible AP
 ./up.sh
 ```
 
-The script checks for `docker` and `kubectl`, downloads k3d v5.9.0 and verifies its SHA-256 checksum, creates the cluster from `cluster.yaml`, waits until all six nodes are Ready and Traefik has rolled out, applies `k8s/` and waits for both deployments. It ends by printing the nodes with their taints and the pods with the node each one runs on. The first run takes about two minutes, most of it pulling images. If the cluster already exists the script starts it and re-applies the manifests, so it is safe to run again.
+The script checks for `docker` and `kubectl`, downloads k3d v5.9.0 and verifies its SHA-256 checksum, creates the cluster from `cluster.yaml`, waits until all six nodes are Ready and Traefik has rolled out, applies `k8s/` and waits for both deployments. It ends by printing the nodes with their taints and the pods with the node each one runs on. The first run takes about two minutes, most of it pulling images. If the cluster already exists and answers, the script only re-applies the manifests. If it exists but does not answer, which is what happens after Docker Desktop has been restarted, the script stops it and starts it again in the right order (see [Limitations](#limitations)). Either way it is safe to run again.
 
 ## Verify
 
@@ -170,3 +170,4 @@ Removes the six nodes, the load balancer and the tools container, and the `k3d-h
 - **Ollama runs on the host,** not in the cluster. On a laptop CPU the 3B model answers in a few seconds, which is enough for a demo.
 - **`*.localhost` is a browser convention.** Chrome, Edge and Firefox resolve it to 127.0.0.1; command-line tools need the `Host` header or `--resolve`.
 - **ServiceLB pods run on the control-plane nodes too.** They tolerate the taint on purpose, so that every node accepts traffic on port 80. The workloads themselves stay on the workers.
+- **A Docker restart does not bring the cluster back by itself.** Docker Desktop restarts the containers in an arbitrary order. k3d gives the servers static IPs from the subnet in `cluster.yaml`, but not the agents, so an agent that starts first can take a server's address and the servers never come up. `./up.sh` notices that the cluster does not answer, stops it and lets k3d start the servers before the agents. That takes about a minute.

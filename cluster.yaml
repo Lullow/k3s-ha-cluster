@@ -15,6 +15,12 @@ agents: 3
 # Pinned so that the cluster is reproducible. Same minor as the kubectl client.
 image: rancher/k3s:v1.36.5-k3s1
 
+# A fixed subnet makes k3d give every node a static IP in the cluster network.
+# Without it Docker hands out the addresses in start order, and after a restart
+# (Docker Desktop restarts the containers by itself) the three etcd members can
+# end up with each other's addresses and never find a quorum.
+subnet: "172.28.0.0/16"
+
 kubeAPI:
   hostIP: "127.0.0.1"
   # Docker Desktop's own Kubernetes already listens on 6443.

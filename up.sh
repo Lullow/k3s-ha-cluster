@@ -34,8 +34,16 @@ k3d version
 
 # 3. The cluster: 3 servers + 3 agents from cluster.yaml. Re-running the script is safe.
 if k3d cluster list "${CLUSTER}" >/dev/null 2>&1; then
-  log "Cluster ${CLUSTER} already exists, making sure it is started"
-  k3d cluster start "${CLUSTER}"
+  if kubectl --context "k3d-${CLUSTER}" get --raw /readyz >/dev/null 2>&1; then
+    log "Cluster ${CLUSTER} is already running"
+  else
+    # Stop before start. Docker Desktop restarts the containers in an arbitrary order, and
+    # an agent can then take a server's static IP, so the servers never come up. k3d starts
+    # the servers first, but only if nothing else holds their addresses.
+    log "Cluster ${CLUSTER} exists but does not answer, restarting it in the right order"
+    k3d cluster stop "${CLUSTER}"
+    k3d cluster start "${CLUSTER}"
+  fi
 else
   log "Creating cluster ${CLUSTER} (3 servers + 3 agents)"
   k3d cluster create --config cluster.yaml

@@ -89,3 +89,10 @@ Two Ingress rules: hello world has no host and is the default site on `http://lo
 ## Outcome (2026-09-30)
 
 Built and verified as planned. The one thing that came up was the checksum file in the k3d release, which lists the binaries as `_dist/<name>`; the install step in `up.sh` accounts for it.
+
+## Found after building (2026-10-10)
+
+The cluster had been left running since 2026-09-30, and Docker Desktop had restarted its containers several times in between. On 2026-10-10 it did not answer: the containers were up, but k3s had exited in all three servers. Docker had handed out the node IPs in a different order, so etcd's members could not find each other ("ignored streaming request; ID mismatch"), no leader was elected, and after 14 minutes k3s gave up. Two changes:
+
+- `subnet: 172.28.0.0/16` in `cluster.yaml`. k3d then gives the servers static IPs. It does not do that for the agents, so an agent that starts before the servers can still take a server's address, and the servers then fail to start at all.
+- `up.sh` checks whether an existing cluster answers. If not, it runs `k3d cluster stop` and `k3d cluster start`, which starts the servers before the agents. Tested by stopping everything, starting the agents first and then running `./up.sh`: the cluster was back in about 70 seconds.
