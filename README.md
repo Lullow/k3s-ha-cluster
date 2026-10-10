@@ -163,6 +163,10 @@ Removes the six nodes, the load balancer and the tools container, and the `k3d-h
 
 ![The chatbot page on chat.localhost:8080 with a question and an answer](screenshots/05-chatbot.png)
 
+**6. `./down.sh`.** The cluster, its network and its volume are gone, the kubeconfig context is removed, and the list of leftover `k3d-` containers is empty.
+
+![./down.sh deleting the cluster, with no k3d- containers left](screenshots/06-down-sh.png)
+
 ## Limitations
 
 - **Containers, not machines.** The six nodes share the host kernel and one Docker network. Scheduling, roles, taints and etcd quorum behave as on real nodes; isolation and failure of hardware do not.
